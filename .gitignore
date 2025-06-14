@@ -83,12 +83,6 @@ venv.bak/
 .AppleDouble
 .LSOverride
 
-# 输出文件
-*.csv
-*.png
-*.jpg
-*.jpeg
-*.pdf
 
 # 模型文件
 *.pkl
