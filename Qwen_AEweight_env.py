@@ -22,7 +22,7 @@ X, y = [], []
 
 # 读取数据并加入进度条
 for file in tqdm(os.listdir(data_dir), desc="加载数据", unit="文件"):
-    if file.endswith(".npy"):
+    if file.endswith(".npy") and file.find("AS") == -1:  # 确保文件名不包含 "AS"
         file_path = os.path.join(data_dir, file)
         filename_key = 'audio/'+file.replace(".npy", ".wav")  # 添加 .wav 后缀以匹配 CSV
         filename_key = filename_key.replace("AE", "")  # 去掉AE以匹配 CSV 中的文件名
@@ -78,7 +78,7 @@ report = classification_report(y_test, y_pred, output_dict=True)
 report_df = pd.DataFrame(report).transpose()
 
 # 将分类报告保存为 CSV
-report_csv_path = "classification_PCA_report.csv"
+report_csv_path = "classification_PCA_AE_report.csv"
 report_df.to_csv(report_csv_path, index=True)
 
 print(f"分类报告已保存为 CSV 文件：{report_csv_path}")
@@ -110,7 +110,7 @@ plt.yticks(rotation=0)
 plt.tight_layout()
 
 # 保存混淆矩阵图
-cm_plot_path = "confusion_matrix.png"
+cm_plot_path = "AE_confusion_matrix.png"
 plt.savefig(cm_plot_path, dpi=300, bbox_inches='tight')
 print(f"混淆矩阵图已保存为：{cm_plot_path}")
 plt.show()
@@ -126,6 +126,6 @@ class_acc_df = pd.DataFrame({
     'Class': class_labels,
     'Accuracy': class_accuracy
 })
-class_acc_csv_path = "class_accuracy.csv"
+class_acc_csv_path = "AE_class_accuracy.csv"
 class_acc_df.to_csv(class_acc_csv_path, index=False)
 print(f"各类别准确率已保存为 CSV 文件：{class_acc_csv_path}")
