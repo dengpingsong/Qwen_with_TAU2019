@@ -1,0 +1,11 @@
+Class,Accuracy
+airport,0.4375
+bus,0.7142857142857143
+metro,0.7
+metro_station,0.6521739130434783
+park,1.0
+public_square,0.5625
+shopping_mall,0.7916666666666666
+street_pedestrian,0.4
+street_traffic,0.875
+tram,0.75
