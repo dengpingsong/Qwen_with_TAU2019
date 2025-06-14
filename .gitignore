@@ -6,9 +6,6 @@
 *.npy
 *.NPY
 
-# 数据目录
-new_Feature/
-TAU-urban-acoustic-scenes-2019-development/
 
 # Python 缓存文件
 __pycache__/
