@@ -3,30 +3,27 @@ import pandas as pd
 import os
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import IncrementalPCA
-from sklearn.linear_model import SGDClassifier
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.decomposition import PCA
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, classification_report
 from tqdm import tqdm  # 引入进度条库
-import matplotlib.pyplot as plt
-import seaborn as sns
+import pickle
 import random
-plt.rcParams['font.sans-serif'] = ['SimHei', 'Arial Unicode MS']  # 支持中文显示
-plt.rcParams['axes.unicode_minus'] = False  # 正常显示负号
 
 # 读取 CSV
 csv_path = "./TAU-urban-acoustic-scenes-2019-development/meta.csv"
-df = pd.read_csv(csv_path,index_col=3, delimiter='\t')
+df = pd.read_csv(csv_path, index_col=3, delimiter='\t')
 
-# 设定批处理参数
-BATCH_SIZE = 200  # 每批处理的文件数量
+# 设定参数
+TRAINING_SAMPLE_SIZE = 2000  # 用于训练模型的样本数量
+BATCH_SIZE = 200  # 分批预测时的批次大小
 data_dir = "./new_Feature"
 
 # 获取所有符合条件的文件列表
 all_files = []
 for file in os.listdir(data_dir):
-    if file.endswith(".npy") and file.find("AE") == -1:  # 确保文件名不包含 "AE"，只处理AS文件
-        filename_key = 'audio/'+file.replace(".npy", ".wav")  # 添加 .wav 后缀以匹配 CSV
-        filename_key = filename_key.replace("AS", "")  # 去掉AS以匹配 CSV 中的文件名
+    if file.endswith(".npy") and file.find("AE") == -1:  # 只处理AS特征
+        filename_key = 'audio/' + file.replace(".npy", ".wav").replace("AS", "")  # 匹配CSV格式
         
         # 检查 filename_key 是否在 CSV 中
         if filename_key in df["filename"].values:
@@ -39,98 +36,103 @@ print(f"找到 {len(all_files)} 个数据文件")
 random.seed(42)
 random.shuffle(all_files)
 
-# 划分训练集和测试集
-split_idx = int(len(all_files) * 0.8)
-train_files = all_files[:split_idx]
-test_files = all_files[split_idx:]
+# 第一步：加载训练样本用于训练模型
+training_files = all_files[:TRAINING_SAMPLE_SIZE]
+remaining_files = all_files[TRAINING_SAMPLE_SIZE:]
 
-print(f"训练集: {len(train_files)} 个文件，测试集: {len(test_files)} 个文件")
+print(f"训练样本: {len(training_files)} 个文件")
+print(f"剩余样本: {len(remaining_files)} 个文件")
 
-# 初始化预处理器和模型
+print("加载训练数据...")
+X_train_full, y_train_full = [], []
+
+for file, label in tqdm(training_files, desc="加载训练数据"):
+    file_path = os.path.join(data_dir, file)
+    try:
+        data = np.load(file_path).flatten()  # 展平数据
+        X_train_full.append(data)
+        y_train_full.append(label)
+    except Exception as e:
+        print(f"加载文件 {file} 时出错: {e}")
+        continue
+
+X_train_full = np.array(X_train_full)
+y_train_full = np.array(y_train_full)
+
+print(f"成功加载 {len(X_train_full)} 个训练样本，特征维度: {X_train_full.shape[1]}")
+
+# 划分训练集和验证集
+X_train, X_val, y_train, y_val = train_test_split(X_train_full, y_train_full, test_size=0.2, random_state=42)
+
+print("训练模型...")
+
+# 数据标准化
 scaler = StandardScaler()
-pca = None
-classifier = SGDClassifier(loss='hinge', random_state=42, max_iter=1000)
+X_train_scaled = scaler.fit_transform(X_train)
+X_val_scaled = scaler.transform(X_val)
 
-# 标签编码
-from sklearn.preprocessing import LabelEncoder
-label_encoder = LabelEncoder()
-all_labels = [label for _, label in all_files]
-label_encoder.fit(all_labels)
+# PCA降维
+pca = PCA(n_components=0.95)  # 保留95%的方差
+X_train_pca = pca.fit_transform(X_train_scaled)
+X_val_pca = pca.transform(X_val_scaled)
+
+print(f"PCA降维后特征数量: {X_train_pca.shape[1]}")
+
+# 训练SVM模型
+svm_model = SVC(kernel="linear", C=1.0)
+svm_model.fit(X_train_pca, y_train)
+
+# 验证模型
+y_val_pred = svm_model.predict(X_val_pca)
+val_accuracy = accuracy_score(y_val, y_val_pred)
+print(f"验证集准确率: {val_accuracy:.4f}")
+
+# 保存训练好的模型和预处理器
+model_data = {
+    'scaler': scaler,
+    'pca': pca,
+    'svm_model': svm_model,
+    'max_features': 5000
+}
+
+with open('trained_model_AS.pkl', 'wb') as f:
+    pickle.dump(model_data, f)
+
+print("模型已保存到 trained_model_AS.pkl")
+
+# 第二步：分批预测剩余数据
+print("开始分批预测剩余数据...")
 
 def load_batch_data(file_batch):
-    """加载一批数据"""
+    """加载一批数据用于预测"""
     X_batch = []
     y_batch = []
+    file_names = []
     
     for file, label in file_batch:
         file_path = os.path.join(data_dir, file)
         try:
-            data = np.load(file_path).flatten()
+            data = np.load(file_path).flatten()  # 展平数据
             X_batch.append(data)
             y_batch.append(label)
+            file_names.append(file)
         except Exception as e:
             print(f"加载文件 {file} 时出错: {e}")
             continue
     
     if len(X_batch) == 0:
-        return None, None
+        return None, None, None
     
-    return np.array(X_batch), np.array(y_batch)
+    return np.array(X_batch), np.array(y_batch), file_names
 
-print("开始分批训练...")
+# 分批预测剩余数据
+all_predictions = []
+all_true_labels = []
+all_file_names = []
 
-# 第一阶段：拟合预处理器
-print("第一阶段：拟合预处理器...")
-for i in tqdm(range(0, len(train_files), BATCH_SIZE), desc="预处理器拟合"):
-    batch_files = train_files[i:i+BATCH_SIZE]
-    X_batch, y_batch = load_batch_data(batch_files)
-    
-    if X_batch is None:
-        continue
-    
-    # 部分拟合标准化器
-    scaler.partial_fit(X_batch)
-    
-    # 第一次处理时初始化PCA
-    if pca is None:
-        # 使用IncrementalPCA，组件数量不能超过批次样本数量
-        n_features = X_batch.shape[1]
-        n_samples = X_batch.shape[0]
-        # 组件数量取样本数、特征数和期望值的最小值
-        n_components = min(n_samples, n_features, 200)  # 限制最大200个组件
-        pca = IncrementalPCA(n_components=n_components, batch_size=min(BATCH_SIZE, n_samples))
-        print(f"初始化IncrementalPCA - 批次大小: {n_samples}, 特征数量: {n_features}, PCA组件数量: {n_components}")
-    
-    # 标准化后进行PCA拟合
-    X_batch_scaled = scaler.transform(X_batch)
-    pca.partial_fit(X_batch_scaled)
-
-# 第二阶段：训练分类器
-print("第二阶段：训练分类器...")
-for i in tqdm(range(0, len(train_files), BATCH_SIZE), desc="模型训练"):
-    batch_files = train_files[i:i+BATCH_SIZE]
-    X_batch, y_batch = load_batch_data(batch_files)
-    
-    if X_batch is None:
-        continue
-    
-    # 预处理
-    X_batch_scaled = scaler.transform(X_batch)
-    X_batch_pca = pca.transform(X_batch_scaled)
-    y_batch_encoded = label_encoder.transform(y_batch)
-    
-    # 增量训练
-    classifier.partial_fit(X_batch_pca, y_batch_encoded, classes=range(len(label_encoder.classes_)))
-
-print("训练完成！开始测试...")
-
-# 测试阶段
-y_test_true = []
-y_test_pred = []
-
-for i in tqdm(range(0, len(test_files), BATCH_SIZE), desc="模型测试"):
-    batch_files = test_files[i:i+BATCH_SIZE]
-    X_batch, y_batch = load_batch_data(batch_files)
+for i in tqdm(range(0, len(remaining_files), BATCH_SIZE), desc="分批预测"):
+    batch_files = remaining_files[i:i+BATCH_SIZE]
+    X_batch, y_batch, file_names = load_batch_data(batch_files)
     
     if X_batch is None:
         continue
@@ -140,19 +142,30 @@ for i in tqdm(range(0, len(test_files), BATCH_SIZE), desc="模型测试"):
     X_batch_pca = pca.transform(X_batch_scaled)
     
     # 预测
-    y_pred_batch = classifier.predict(X_batch_pca)
-    y_pred_batch_labels = label_encoder.inverse_transform(y_pred_batch)
+    y_pred_batch = svm_model.predict(X_batch_pca)
     
-    y_test_true.extend(y_batch)
-    y_test_pred.extend(y_pred_batch_labels)
+    all_predictions.extend(y_pred_batch)
+    all_true_labels.extend(y_batch)
+    all_file_names.extend(file_names)
 
-# 转换为numpy数组
-y_test = np.array(y_test_true)
-y_pred = np.array(y_test_pred)
+# 合并验证集和预测结果
+y_test = np.concatenate([y_val, np.array(all_true_labels)])
+y_pred = np.concatenate([y_val_pred, np.array(all_predictions)])
 
-# 计算准确率
+print(f"总预测样本数: {len(y_test)}")
+
+# 保存预测结果
+results_df = pd.DataFrame({
+    'file_name': all_file_names,
+    'true_label': all_true_labels,
+    'predicted_label': all_predictions
+})
+results_df.to_csv('prediction_results_AS.csv', index=False)
+print("预测结果已保存到 prediction_results_AS.csv")
+
+# 计算总体准确率
 accuracy = accuracy_score(y_test, y_pred)
-print(f"增量学习分类准确率: {accuracy:.4f}")
+print(f"总体分类准确率: {accuracy:.4f}")
 
 # 生成分类报告
 report = classification_report(y_test, y_pred, output_dict=True)
@@ -165,50 +178,3 @@ report_csv_path = "classification_PCA_AS_report.csv"
 report_df.to_csv(report_csv_path, index=True)
 
 print(f"分类报告已保存为 CSV 文件：{report_csv_path}")
-
-# 生成混淆矩阵
-cm = confusion_matrix(y_test, y_pred)
-print(f"\n混淆矩阵:\n{cm}")
-
-# 获取类别标签
-class_labels = sorted(np.unique(np.concatenate([y_test, y_pred])))
-
-# 创建混淆矩阵的 DataFrame
-cm_df = pd.DataFrame(cm, index=class_labels, columns=class_labels)
-
-# 保存混淆矩阵为 CSV
-cm_csv_path = "AS_confusion_matrix.csv"
-cm_df.to_csv(cm_csv_path, index=True)
-print(f"混淆矩阵已保存为 CSV 文件：{cm_csv_path}")
-
-# 可视化混淆矩阵
-plt.figure(figsize=(12, 10))
-sns.heatmap(cm_df, annot=True, fmt='d', cmap='Blues', 
-            cbar_kws={'label': '预测数量'})
-plt.title('混淆矩阵', fontsize=16, fontweight='bold')
-plt.xlabel('预测标签', fontsize=12)
-plt.ylabel('真实标签', fontsize=12)
-plt.xticks(rotation=45, ha='right')
-plt.yticks(rotation=0)
-plt.tight_layout()
-
-# 保存混淆矩阵图
-cm_plot_path = "AS_confusion_matrix.png"
-plt.savefig(cm_plot_path, dpi=300, bbox_inches='tight')
-print(f"混淆矩阵图已保存为：{cm_plot_path}")
-plt.show()
-
-# 计算并显示每个类别的准确率
-class_accuracy = cm.diagonal() / cm.sum(axis=1)
-print(f"\n各类别准确率:")
-for i, label in enumerate(class_labels):
-    print(f"{label}: {class_accuracy[i]:.2f}")
-
-# 保存各类别准确率
-class_acc_df = pd.DataFrame({
-    'Class': class_labels,
-    'Accuracy': class_accuracy
-})
-class_acc_csv_path = "AS_class_accuracy.csv"
-class_acc_df.to_csv(class_acc_csv_path, index=False)
-print(f"各类别准确率已保存为 CSV 文件：{class_acc_csv_path}")
