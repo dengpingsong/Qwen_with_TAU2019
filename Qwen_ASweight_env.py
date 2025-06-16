@@ -178,3 +178,31 @@ report_csv_path = "classification_PCA_AS_report.csv"
 report_df.to_csv(report_csv_path, index=True)
 
 print(f"分类报告已保存为 CSV 文件：{report_csv_path}")
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# 计算混淆矩阵
+conf_mat = confusion_matrix(y_test, y_pred, labels=np.unique(y_test))
+
+# 将混淆矩阵保存为 CSV
+confusion_df = pd.DataFrame(conf_mat, index=np.unique(y_test), columns=np.unique(y_test))
+confusion_csv_path = "confusion_matrix_AS.csv"
+confusion_df.to_csv(confusion_csv_path)
+print(f"混淆矩阵已保存为 CSV 文件：{confusion_csv_path}")
+
+# 可视化混淆矩阵
+plt.figure(figsize=(12, 10))
+sns.heatmap(confusion_df, annot=True, fmt='d', cmap="Blues")
+plt.title("Confusion Matrix")
+plt.ylabel("True Label")
+plt.xlabel("Predicted Label")
+plt.xticks(rotation=45)
+plt.yticks(rotation=0)
+plt.tight_layout()
+
+# 保存混淆矩阵图像
+confusion_img_path = "confusion_matrix_AS.png"
+plt.savefig(confusion_img_path)
+print(f"混淆矩阵图像已保存为：{confusion_img_path}")
+plt.close()
