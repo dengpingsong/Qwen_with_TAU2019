@@ -175,7 +175,7 @@ def load_batch_features(file_pairs_batch):
 print("开始分批推理剩余数据...")
 from tqdm import tqdm
 
-INFERENCE_BATCH_SIZE = 200
+INFERENCE_BATCH_SIZE = 100
 all_predictions = []
 all_true_labels = []
 all_file_names = []
