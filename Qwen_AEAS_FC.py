@@ -28,7 +28,7 @@ print(f"使用设备: {device}")
 
 TRAINING_SAMPLE_SIZE = 2000
 BATCH_SIZE = 64
-EPOCHS = 60
+EPOCHS = 30
 LEARNING_RATE = 1e-3
 data_dir = "./new_Feature"
 
@@ -96,16 +96,38 @@ val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE)
 # 简单全连接网络
 class SimpleFC(nn.Module):
     def __init__(self, input_dim, num_classes):
-        super().__init__()
-        self.fc = nn.Sequential(
-            nn.Linear(input_dim, 256),
+        super(SimpleFC, self).__init__()
+        self.network = nn.Sequential(
+            # 第一层
+            nn.Linear(input_dim, 1024),
+            nn.BatchNorm1d(1024),
             nn.ReLU(),
+            nn.Dropout(0.3),
+            
+            # 第二层
+            nn.Linear(1024, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            
+            # 第三层
+            nn.Linear(512, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            
+            # 第四层
             nn.Linear(256, 128),
+            nn.BatchNorm1d(128),
             nn.ReLU(),
+            nn.Dropout(0.2),
+            
+            # 输出层
             nn.Linear(128, num_classes)
         )
+    
     def forward(self, x):
-        return self.fc(x)
+        return self.network(x)
 
 model = SimpleFC(X_train.shape[1], len(le.classes_)).to(device)
 criterion = nn.CrossEntropyLoss()
