@@ -28,7 +28,7 @@ print(f"使用设备: {device}")
 
 TRAINING_SAMPLE_SIZE = 2000
 BATCH_SIZE = 64
-EPOCHS = 30
+EPOCHS = 60
 LEARNING_RATE = 1e-3
 data_dir = "./new_Feature"
 

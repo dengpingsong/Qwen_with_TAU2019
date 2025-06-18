@@ -1,0 +1,46 @@
+================================================================================
+PCA AE vs AS 模型比较总结报告
+================================================================================
+报告生成时间: 2025-06-18 20:47:33
+
+1. 整体性能对比:
+   AE模型准确率: 0.7024
+   AS模型准确率: 0.6892
+   准确率差异: 0.0131
+
+2. 平均指标对比:
+   precision: AE=0.7064, AS=0.6941, 差异=0.0123
+   recall: AE=0.7045, AS=0.6891, 差异=0.0154
+   f1-score: AE=0.7036, AS=0.6904, 差异=0.0132
+
+3. 表现最好的模型 (按类别):
+   precision: AE更好=7类, AS更好=3类, 相等=0类
+   recall: AE更好=7类, AS更好=3类, 相等=0类
+   f1-score: AE更好=8类, AS更好=2类, 相等=0类
+
+4. 各类别差异最大的前3名:
+   precision差异最大:
+     1. street_pedestrian: 0.0655
+     2. bus: -0.0451
+     3. metro: 0.0392
+   recall差异最大:
+     1. public_square: 0.1155
+     2. bus: 0.0604
+     3. metro_station: -0.0353
+   f1-score差异最大:
+     1. public_square: 0.0484
+     2. street_pedestrian: 0.0360
+     3. shopping_mall: 0.0153
+
+5. 关键发现:
+   - AE模型整体准确率更高 (+0.0131)
+   - AE在public_square类别上F1分数提升最大: +0.0484
+   - AE在metro_station类别上F1分数下降最大: -0.0033
+
+6. 输出文件:
+   - detailed_AE_AS_comparison.csv: 详细比较数据
+   - confusion_matrix_difference_AE_AS.csv: 混淆矩阵差异
+   - PCA_AE_AS_comparison_analysis.png: 综合分析图表
+   - confusion_matrix_difference_AE_AS.png: 差异混淆矩阵图
+   - AE_AS_comparison_summary.txt: 本总结报告
+================================================================================

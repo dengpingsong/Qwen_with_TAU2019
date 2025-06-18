@@ -59,7 +59,7 @@ for batch_idx in range(num_batches):
             
             # 生成对话内容（仅包含当前音频）
             conversation = [
-                {"role": "system", "content": "You need to focus on describe every events in the audio."},
+                {"role": "system", "[-[-p[content": "You need to focus on describe every events in the audio."},
                 {
                     "role": "user",
                     "content": [{

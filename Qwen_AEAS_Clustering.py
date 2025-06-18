@@ -35,9 +35,9 @@ print(f"使用设备: {device}")
 TRAINING_SAMPLE_SIZE = 2000
 BATCH_SIZE = 64
 EPOCHS = 30
-LEARNING_RATE = 1e-3
-N_CLUSTERS = 20  # 聚类数量
-PCA_COMPONENTS = 50  # PCA降维维度
+LEARNING_RATE = 1e-4
+N_CLUSTERS = 10  # 聚类数量
+PCA_COMPONENTS = 500  # PCA降维维度
 data_dir = "./new_Feature"
 
 # 获取所有 AE/AS 成对文件
@@ -416,17 +416,17 @@ for cluster_id in range(N_CLUSTERS):
 pd.DataFrame(list(cluster_accuracy.items()), 
              columns=['cluster_id', 'accuracy']).to_csv("cluster_performance.csv", index=False)
 
-# 保存模型和相关对象
-torch.save({
-    'model_state_dict': model.state_dict(),
-    'scaler': scaler,
-    'pca': pca,
-    'kmeans': kmeans,
-    'label_encoder': le,
-    'n_clusters': N_CLUSTERS,
-    'pca_components': PCA_COMPONENTS
-}, 'trained_model_clustering.pth')
-print("聚类增强模型已保存为 trained_model_clustering.pth")
+# # 保存模型和相关对象
+# torch.save({
+#     'model_state_dict': model.state_dict(),
+#     'scaler': scaler,
+#     'pca': pca,
+#     'kmeans': kmeans,
+#     'label_encoder': le,
+#     'n_clusters': N_CLUSTERS,
+#     'pca_components': PCA_COMPONENTS
+# }, 'trained_model_clustering.pth')
+# print("聚类增强模型已保存为 trained_model_clustering.pth")
 
 print("\n聚类增强处理完成!")
 print(f"- 使用了 {N_CLUSTERS} 个聚类")
