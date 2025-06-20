@@ -13,6 +13,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from tqdm import tqdm
 from result_manager import ResultManager
+from simple_network import AudioClassificationNet, AudioFeatureDataset
+from training_config import (
+    TRAINING_CONFIG, create_optimizer, create_scheduler, get_learning_rate,
+    should_early_stop, print_training_progress, print_training_summary, get_config_value
+)
 
 # 读取 CSV
 csv_path = "./TAU-urban-acoustic-scenes-2019-development/meta.csv"
@@ -32,10 +37,12 @@ else:
 print(f"使用设备: {device}")
 rm._log(f"使用设备: {device}")
 
-TRAINING_SAMPLE_SIZE = 2000
-BATCH_SIZE = 64
-EPOCHS = 30
-LEARNING_RATE = 1e-3
+# 训练参数 - 从配置文件导入
+TRAINING_SAMPLE_SIZE = get_config_value('training_sample_size', 2000)
+BATCH_SIZE = get_config_value('batch_size', 64)
+MAX_EPOCHS = get_config_value('max_epochs', 500)
+PROGRESS_INTERVAL = get_config_value('progress_interval', 5)
+LEARNING_RATE = get_config_value('learning_rate', 0.001)
 data_dir = "./new_Feature"
 
 # 获取所有 AE/AS 成对文件
@@ -94,55 +101,42 @@ class FeatureDataset(Dataset):
     def __getitem__(self, idx):
         return self.X[idx], self.y[idx]
 
-train_dataset = FeatureDataset(X_train, y_train)
-val_dataset = FeatureDataset(X_val, y_val)
+# 使用统一的数据集类和网络架构
+train_dataset = AudioFeatureDataset(X_train, y_train)
+val_dataset = AudioFeatureDataset(X_val, y_val)
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE)
 
-# 简单全连接网络
-class SimpleFC(nn.Module):
-    def __init__(self, input_dim, num_classes):
-        super(SimpleFC, self).__init__()
-        self.network = nn.Sequential(
-            # 第一层
-            nn.Linear(input_dim, 1024),
-            nn.BatchNorm1d(1024),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            
-            # 第二层
-            nn.Linear(1024, 512),
-            nn.BatchNorm1d(512),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            
-            # 第三层
-            nn.Linear(512, 256),
-            nn.BatchNorm1d(256),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            
-            # 第四层
-            nn.Linear(256, 128),
-            nn.BatchNorm1d(128),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            
-            # 输出层
-            nn.Linear(128, num_classes)
-        )
-    
-    def forward(self, x):
-        return self.network(x)
-
-model = SimpleFC(X_train.shape[1], len(le.classes_)).to(device)
+# 创建模型
+model = AudioClassificationNet(X_train.shape[1], len(le.classes_)).to(device)
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+optimizer = create_optimizer(model.parameters())
+scheduler = create_scheduler(optimizer, scheduler_type='cosine')
 
-# 训练
-for epoch in range(EPOCHS):
-    model.train()
+print(f"模型参数数量: {sum(p.numel() for p in model.parameters()):,}")
+rm._log(f"创建模型，参数数量: {sum(p.numel() for p in model.parameters()):,}")
+
+# 训练模型
+print("开始训练...")
+train_losses = []
+val_accuracies = []
+learning_rates = []
+
+# 训练循环
+print("开始训练...")
+train_losses = []
+val_accuracies = []
+learning_rates = []
+best_val_acc = 0.0
+early_stop_reason = ""
+
+for epoch in range(MAX_EPOCHS):
+    # 训练阶段
+    model.train() 
     total_loss = 0
+    train_correct = 0
+    train_total = 0
+    
     for xb, yb in train_loader:
         xb, yb = xb.to(device), yb.to(device)
         optimizer.zero_grad()
@@ -150,11 +144,74 @@ for epoch in range(EPOCHS):
         loss = criterion(out, yb)
         loss.backward()
         optimizer.step()
+        
         total_loss += loss.item() * xb.size(0)
+        pred = out.argmax(dim=1, keepdim=True)
+        train_correct += pred.eq(yb.view_as(pred)).sum().item()
+        train_total += yb.size(0)
+    
     avg_loss = total_loss / len(train_loader.dataset)
-    print(f"Epoch {epoch+1}/{EPOCHS}, Loss: {avg_loss:.4f}")
+    train_acc = train_correct / train_total
+    train_losses.append(avg_loss)
+    
+    # 验证阶段
+    model.eval()
+    val_correct = 0
+    val_total = 0
+    
+    with torch.no_grad():
+        for xb, yb in val_loader:
+            xb, yb = xb.to(device), yb.to(device)
+            out = model(xb)
+            pred = out.argmax(dim=1, keepdim=True)
+            val_correct += pred.eq(yb.view_as(pred)).sum().item()
+            val_total += yb.size(0)
+    
+    val_acc = val_correct / val_total
+    val_accuracies.append(val_acc)
+    
+    # 记录当前学习率
+    current_lr = get_learning_rate(optimizer)
+    learning_rates.append(current_lr)
+    
+    # 保存最佳模型
+    if val_acc > best_val_acc:
+        best_val_acc = val_acc
+        torch.save({
+            'model_state_dict': model.state_dict(),
+            'input_dim': X_train.shape[1],
+            'num_classes': len(le.classes_),
+            'best_val_acc': best_val_acc,
+            'label_encoder': le
+        }, 'best_model_AEAS_FC.pth')
+    
+    # 更新学习率 (余弦退火)
+    scheduler.step()
+    
+    # 检查是否需要早停
+    should_stop, reason = should_early_stop(current_lr, val_accuracies)
+    if should_stop:
+        early_stop_reason = reason
+        print(f"\n早停触发 - {reason}")
+        print(f"在第 {epoch+1} 轮停止训练")
+        break
+    
+    # 打印训练进度
+    if (epoch + 1) % PROGRESS_INTERVAL == 0:
+        print_training_progress(epoch, MAX_EPOCHS, avg_loss, train_acc, val_acc, current_lr, best_val_acc)
 
-# 验证
+# 训练结束信息
+total_epochs_trained = epoch + 1
+print_training_summary(total_epochs_trained, MAX_EPOCHS, best_val_acc, early_stop_reason)
+if early_stop_reason:
+    rm._log(f"早停原因: {early_stop_reason}")
+else:
+    rm._log(f"训练完成: 达到最大训练轮数 {MAX_EPOCHS}")
+
+# 最终验证（使用最佳模型）
+print("\n使用最佳模型进行最终验证...")
+checkpoint = torch.load('best_model_AEAS_FC.pth')
+model.load_state_dict(checkpoint['model_state_dict'])
 model.eval()
 val_preds, val_labels = [], []
 with torch.no_grad():
@@ -164,23 +221,23 @@ with torch.no_grad():
         preds = out.argmax(dim=1).cpu().numpy()
         val_preds.extend(preds)
         val_labels.extend(yb.cpu().numpy())
-val_acc = accuracy_score(val_labels, val_preds)
-print(f"验证集准确率: {val_acc:.4f}")
+final_val_acc = accuracy_score(val_labels, val_preds)
+print(f"最终验证集准确率: {final_val_acc:.4f}")
 
-# 分类报告
+# 分类报告 (使用最终验证结果)
 report = classification_report(val_labels, val_preds, target_names=le.classes_, output_dict=True)
-pd.DataFrame(report).transpose().to_csv("classification_PCA_AEAS_FC_report.csv")
+rm.save_dataframe(pd.DataFrame(report).transpose(), "classification_AEAS_FC_report.csv")
 
-# 混淆矩阵
+# 混淆矩阵 (使用最终验证结果)
 cm = confusion_matrix(val_labels, val_preds)
-pd.DataFrame(cm, index=le.classes_, columns=le.classes_).to_csv("confusion_matrix_AEAS_FC.csv")
+rm.save_dataframe(pd.DataFrame(cm, index=le.classes_, columns=le.classes_), "confusion_matrix_AEAS_FC.csv")
 plt.figure(figsize=(12,10))
 sns.heatmap(cm, annot=True, fmt='d', cmap="Blues", xticklabels=le.classes_, yticklabels=le.classes_)
-plt.title("Confusion Matrix")
+plt.title("Confusion Matrix - AEAS FC")
 plt.ylabel("True Label")
 plt.xlabel("Predicted Label")
 plt.tight_layout()
-plt.savefig("confusion_matrix_AEAS_FC.png")
+rm.save_plot(plt.gcf(), "confusion_matrix_AEAS_FC.png")
 plt.close()
 
 # 分批加载和推理剩余数据

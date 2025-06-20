@@ -14,6 +14,11 @@ import seaborn as sns
 from tqdm import tqdm
 import warnings
 from result_manager import ResultManager
+from simple_network import AudioClassificationNet, AudioFeatureDataset
+from training_config import (
+    TRAINING_CONFIG, create_optimizer, create_scheduler, get_learning_rate,
+    should_early_stop, print_training_progress, print_training_summary, get_config_value
+)
 warnings.filterwarnings('ignore')
 
 # 读取 CSV
@@ -33,12 +38,18 @@ else:
     device = "cpu"
 print(f"使用设备: {device}")
 
+# 训练参数 - 从配置文件导入
+BATCH_SIZE = get_config_value('batch_size', 64)
+LEARNING_RATE = get_config_value('learning_rate', 0.001)
+MAX_EPOCHS = get_config_value('max_epochs', 500)
+PROGRESS_INTERVAL = get_config_value('progress_interval', 5)
+EARLY_STOPPING_PATIENCE = get_config_value('early_stopping_patience', 15)
+
+# 数据参数
+TRAINING_SAMPLE_SIZE = get_config_value('training_sample_size', 2000)
+INFERENCE_BATCH_SIZE = 100  # 推理批处理大小
+
 # 设定参数
-TRAINING_SAMPLE_SIZE = 2000  # 用于训练模型的样本数量
-BATCH_SIZE = 64  # 训练批次大小
-INFERENCE_BATCH_SIZE = 200  # 分批预测时的批次大小
-EPOCHS = 30  # 训练轮数
-LEARNING_RATE = 1e-3  # 学习率
 data_dir = "./new_Feature"
 
 # 获取所有符合条件的文件列表
@@ -102,75 +113,37 @@ X_val_scaled = scaler.transform(X_val)
 print(f"训练集大小: {X_train_scaled.shape}")
 print(f"验证集大小: {X_val_scaled.shape}")
 
-# PyTorch Dataset
-class ASFeatureDataset(Dataset):
-    def __init__(self, X, y):
-        self.X = torch.tensor(X, dtype=torch.float32)
-        self.y = torch.tensor(y, dtype=torch.long)
-    
-    def __len__(self):
-        return len(self.X)
-    
-    def __getitem__(self, idx):
-        return self.X[idx], self.y[idx]
+# 创建数据加载器 - 使用统一的数据集类
+train_dataset = AudioFeatureDataset(X_train_scaled, y_train)
+val_dataset = AudioFeatureDataset(X_val_scaled, y_val)
+# 训练参数 - 从配置文件导入
+BATCH_SIZE = TRAINING_CONFIG['batch_size']
+LEARNING_RATE = TRAINING_CONFIG['learning_rate']
+EPOCHS = TRAINING_CONFIG['epochs']
+EARLY_STOPPING_PATIENCE = TRAINING_CONFIG['early_stopping_patience']
 
-# 创建数据加载器
-train_dataset = ASFeatureDataset(X_train_scaled, y_train)
-val_dataset = ASFeatureDataset(X_val_scaled, y_val)
+# 更新数据加载器
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-# 定义全连接神经网络
-class ASClassificationNet(nn.Module):
-    def __init__(self, input_dim, num_classes):
-        super(ASClassificationNet, self).__init__()
-        self.network = nn.Sequential(
-            # 第一层
-            nn.Linear(input_dim, 1024),
-            nn.BatchNorm1d(1024),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            
-            # 第二层
-            nn.Linear(1024, 512),
-            nn.BatchNorm1d(512),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            
-            # 第三层
-            nn.Linear(512, 256),
-            nn.BatchNorm1d(256),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            
-            # 第四层
-            nn.Linear(256, 128),
-            nn.BatchNorm1d(128),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            
-            # 输出层
-            nn.Linear(128, num_classes)
-        )
-    
-    def forward(self, x):
-        return self.network(x)
-
-# 创建模型
-model = ASClassificationNet(X_train_scaled.shape[1], len(le.classes_)).to(device)
+# 创建模型 - 使用统一的网络架构
+model = AudioClassificationNet(X_train_scaled.shape[1], len(le.classes_)).to(device)
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-5)
-scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
+optimizer = create_optimizer(model.parameters())
+scheduler = create_scheduler(optimizer, scheduler_type='cosine')
 
 print(f"模型参数数量: {sum(p.numel() for p in model.parameters()):,}")
+rm._log(f"创建模型，参数数量: {sum(p.numel() for p in model.parameters()):,}")
 
 # 训练模型
 print("开始训练模型...")
 train_losses = []
 val_accuracies = []
+learning_rates = []
 best_val_acc = 0.0
+early_stop_reason = ""
 
-for epoch in range(EPOCHS):
+for epoch in range(MAX_EPOCHS):
     # 训练阶段
     model.train()
     total_loss = 0
@@ -211,6 +184,10 @@ for epoch in range(EPOCHS):
     val_acc = val_correct / val_total
     val_accuracies.append(val_acc)
     
+    # 记录当前学习率
+    current_lr = get_learning_rate(optimizer)
+    learning_rates.append(current_lr)
+    
     # 保存最佳模型
     if val_acc > best_val_acc:
         best_val_acc = val_acc
@@ -222,29 +199,52 @@ for epoch in range(EPOCHS):
             'input_dim': X_train_scaled.shape[1]
         }, 'best_model_AS_FC.pth')
     
+    # 更新学习率 (余弦退火)
     scheduler.step()
     
-    if (epoch + 1) % 5 == 0:
-        print(f'Epoch [{epoch+1}/{EPOCHS}], Loss: {avg_loss:.4f}, '
-              f'Train Acc: {train_acc:.4f}, Val Acc: {val_acc:.4f}')
+    # 检查是否需要早停
+    should_stop, reason = should_early_stop(current_lr, val_accuracies)
+    if should_stop:
+        early_stop_reason = reason
+        print(f"\n早停触发 - {reason}")
+        print(f"在第 {epoch+1} 轮停止训练")
+        break
+    
+    # 打印训练进度
+    if (epoch + 1) % PROGRESS_INTERVAL == 0:
+        print_training_progress(epoch, MAX_EPOCHS, avg_loss, train_acc, val_acc, current_lr, best_val_acc)
 
-print(f"训练完成! 最佳验证准确率: {best_val_acc:.4f}")
+# 训练结束信息
+total_epochs_trained = epoch + 1
+print_training_summary(total_epochs_trained, MAX_EPOCHS, best_val_acc, early_stop_reason)
+if early_stop_reason:
+    rm._log(f"早停原因: {early_stop_reason}")
+else:
+    rm._log(f"训练完成: 达到最大训练轮数 {MAX_EPOCHS}")
 
 # 绘制训练曲线
-plt.figure(figsize=(12, 4))
+plt.figure(figsize=(15, 5))
 
-plt.subplot(1, 2, 1)
+plt.subplot(1, 3, 1)
 plt.plot(train_losses)
 plt.title('Training Loss')
 plt.xlabel('Epoch')
 plt.ylabel('Loss')
 plt.grid(True)
 
-plt.subplot(1, 2, 2)
+plt.subplot(1, 3, 2)
 plt.plot(val_accuracies)
 plt.title('Validation Accuracy')
 plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
+plt.grid(True)
+
+plt.subplot(1, 3, 3)
+plt.plot(learning_rates)
+plt.title('Learning Rate (Cosine Annealing)')
+plt.xlabel('Epoch')
+plt.ylabel('Learning Rate')
+plt.yscale('log')
 plt.grid(True)
 
 plt.tight_layout()

@@ -1,0 +1,16 @@
+
+实验摘要
+========================================
+模型名称: AE_FC_Neural_Network
+运行时间: 2025-06-20 14:58:16
+输出目录: experiment_results/Qwen_AE_FC_Classification/2025-06-20_14-47-25
+
+性能指标:
+- 准确率: 0.670989591937882
+- training_samples: 2000
+- test_samples: 12106
+- feature_dimensions: 1159168
+- num_classes: 10
+- best_validation_accuracy: 0.7125
+- epochs: 30
+- device: mps
