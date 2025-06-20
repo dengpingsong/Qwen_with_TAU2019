@@ -2,3 +2,14 @@
 [2025-06-20 15:14:21] 输出目录: experiment_results/Qwen_AS_FC_Classification/2025-06-20_15-14-21
 [2025-06-20 15:14:21] 开始 AS 全连接网络分类实验
 [2025-06-20 15:14:39] 创建模型，参数数量: 11,878,410
+[2025-06-20 15:16:02] 早停原因: 验证准确率连续 50 轮未提升
+[2025-06-20 15:16:55] 保存文本文件: performance_summary.txt
+[2025-06-20 15:16:55] 复制文件: best_model_AS_FC.pth
+[2025-06-20 15:16:55] 复制文件: trained_model_AS_FC.pth
+[2025-06-20 15:16:55] 复制文件: training_curves_AS_FC.png
+[2025-06-20 15:16:55] 复制文件: prediction_results_AS_FC.csv
+[2025-06-20 15:16:55] 保存JSON文件: experiment_summary.json
+[2025-06-20 15:16:55] 保存文本文件: experiment_summary.txt
+[2025-06-20 15:16:55] 运行结束: 2025-06-20 15:16:55
+[2025-06-20 15:16:55] 保存文本文件: run_summary.txt
+[2025-06-20 15:16:55] 所有结果已保存到: experiment_results/Qwen_AS_FC_Classification/2025-06-20_15-14-21

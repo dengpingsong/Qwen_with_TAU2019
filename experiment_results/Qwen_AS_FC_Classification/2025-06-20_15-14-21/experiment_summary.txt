@@ -1,0 +1,16 @@
+
+实验摘要
+========================================
+模型名称: AS_FC_Neural_Network
+运行时间: 2025-06-20 15:16:55
+输出目录: experiment_results/Qwen_AS_FC_Classification/2025-06-20_15-14-21
+
+性能指标:
+- 准确率: 0.647530150338675
+- training_samples: 2000
+- test_samples: 12106
+- feature_dimensions: 1187840
+- num_classes: 10
+- best_validation_accuracy: 0.655
+- epochs: 500
+- device: mps
