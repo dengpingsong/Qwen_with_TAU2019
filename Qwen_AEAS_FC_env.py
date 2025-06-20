@@ -18,7 +18,8 @@ from training_config import (
     TRAINING_CONFIG, create_optimizer, create_scheduler, get_learning_rate,
     should_early_stop, print_training_progress, print_training_summary, get_config_value
 )
-
+import warnings
+warnings.filterwarnings('ignore')
 # 读取 CSV
 csv_path = "./TAU-urban-acoustic-scenes-2019-development/meta.csv"
 df = pd.read_csv(csv_path, index_col=3, delimiter='\t')
@@ -226,18 +227,18 @@ print(f"最终验证集准确率: {final_val_acc:.4f}")
 
 # 分类报告 (使用最终验证结果)
 report = classification_report(val_labels, val_preds, target_names=le.classes_, output_dict=True)
-rm.save_dataframe(pd.DataFrame(report).transpose(), "classification_AEAS_FC_report.csv")
+rm.save_csv(pd.DataFrame(report).transpose(), "classification_AEAS_FC_report.csv")
 
 # 混淆矩阵 (使用最终验证结果)
 cm = confusion_matrix(val_labels, val_preds)
-rm.save_dataframe(pd.DataFrame(cm, index=le.classes_, columns=le.classes_), "confusion_matrix_AEAS_FC.csv")
+rm.save_csv(pd.DataFrame(cm, index=le.classes_, columns=le.classes_), "confusion_matrix_AEAS_FC.csv")
 plt.figure(figsize=(12,10))
 sns.heatmap(cm, annot=True, fmt='d', cmap="Blues", xticklabels=le.classes_, yticklabels=le.classes_)
 plt.title("Confusion Matrix - AEAS FC")
 plt.ylabel("True Label")
 plt.xlabel("Predicted Label")
 plt.tight_layout()
-rm.save_plot(plt.gcf(), "confusion_matrix_AEAS_FC.png")
+rm.save_figure(plt.gcf(), "confusion_matrix_AEAS_FC.png")
 plt.close()
 
 # 分批加载和推理剩余数据

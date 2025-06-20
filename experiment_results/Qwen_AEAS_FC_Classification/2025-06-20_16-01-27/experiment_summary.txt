@@ -1,0 +1,15 @@
+
+实验摘要
+========================================
+模型名称: AEAS_FC_Neural_Network
+运行时间: 2025-06-20 16:09:27
+输出目录: experiment_results/Qwen_AEAS_FC_Classification/2025-06-20_16-01-27
+
+性能指标:
+- 准确率: 0.6457954733190153
+- training_samples: 1600
+- test_samples: 12106
+- fused_feature_dimensions: 2347008
+- num_classes: 10
+- device: mps
+- feature_fusion: AE+AS

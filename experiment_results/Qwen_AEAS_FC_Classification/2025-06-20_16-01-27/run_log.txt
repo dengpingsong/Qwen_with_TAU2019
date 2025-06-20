@@ -1,0 +1,19 @@
+[2025-06-20 16:01:27] 开始运行: 2025-06-20 16:01:27
+[2025-06-20 16:01:27] 输出目录: experiment_results/Qwen_AEAS_FC_Classification/2025-06-20_16-01-27
+[2025-06-20 16:01:27] 开始 AE+AS 特征融合全连接网络分类实验
+[2025-06-20 16:01:27] 使用设备: mps
+[2025-06-20 16:02:07] 创建模型，参数数量: 23,470,090
+[2025-06-20 16:07:14] 早停原因: 验证准确率连续 50 轮未提升
+[2025-06-20 16:07:15] 保存CSV文件: classification_AEAS_FC_report.csv
+[2025-06-20 16:07:15] 保存CSV文件: confusion_matrix_AEAS_FC.csv
+[2025-06-20 16:07:16] 保存图片文件: confusion_matrix_AEAS_FC.png
+[2025-06-20 16:09:26] 保存CSV文件: classification_AEAS_FC_report.csv
+[2025-06-20 16:09:26] 保存CSV文件: confusion_matrix_AEAS_FC_total.csv
+[2025-06-20 16:09:26] 保存图片文件: confusion_matrix_AEAS_FC_total.png
+[2025-06-20 16:09:27] 复制文件: trained_model_AEAS_FC.pth
+[2025-06-20 16:09:27] 保存文本文件: performance_summary.txt
+[2025-06-20 16:09:27] 保存JSON文件: experiment_summary.json
+[2025-06-20 16:09:27] 保存文本文件: experiment_summary.txt
+[2025-06-20 16:09:27] 运行结束: 2025-06-20 16:09:27
+[2025-06-20 16:09:27] 保存文本文件: run_summary.txt
+[2025-06-20 16:09:27] 所有结果已保存到: experiment_results/Qwen_AEAS_FC_Classification/2025-06-20_16-01-27
