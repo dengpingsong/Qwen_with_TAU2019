@@ -1,0 +1,15 @@
+{
+  "experiment_info": {
+    "model_name": "Test_CNN_Model",
+    "timestamp": "2025-06-20_13-14-21",
+    "output_directory": "experiment_results/Test_Classification/2025-06-20_13-14-21"
+  },
+  "performance_metrics": {
+    "accuracy": 0.95,
+    "final_loss": 0.12,
+    "training_epochs": 5,
+    "best_epoch": 5,
+    "convergence_speed": "fast"
+  },
+  "run_time": "2025-06-20 13:14:21"
+}

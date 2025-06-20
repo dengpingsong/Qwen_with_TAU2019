@@ -12,10 +12,15 @@ import random
 import matplotlib.pyplot as plt
 import seaborn as sns
 from tqdm import tqdm
+from result_manager import ResultManager
 
 # 读取 CSV
 csv_path = "./TAU-urban-acoustic-scenes-2019-development/meta.csv"
 df = pd.read_csv(csv_path, index_col=3, delimiter='\t')
+
+# 初始化结果管理器
+rm = ResultManager(project_name="Qwen_AEAS_FC_Classification")
+rm._log("开始 AE+AS 特征融合全连接网络分类实验")
 
 # 自动选择设备和精度
 if torch.cuda.is_available():
@@ -25,6 +30,7 @@ elif torch.backends.mps.is_available():
 else:
     device = "cpu"
 print(f"使用设备: {device}")
+rm._log(f"使用设备: {device}")
 
 TRAINING_SAMPLE_SIZE = 2000
 BATCH_SIZE = 64
@@ -244,18 +250,30 @@ report = classification_report(y_test, y_pred, target_names=le.classes_, output_
 pd.DataFrame(report).transpose().to_csv("classification_AEAS_FC_report.csv")
 print("分类报告已保存为 classification_AEAS_FC_report.csv")
 
+# 使用结果管理器保存分类报告
+rm.save_csv(pd.DataFrame(report).transpose(), "classification_AEAS_FC_report.csv")
+
 # 总体混淆矩阵
 cm_total = confusion_matrix(y_test, y_pred)
-pd.DataFrame(cm_total, index=le.classes_, columns=le.classes_).to_csv("confusion_matrix_AEAS_FC_total.csv")
+confusion_df = pd.DataFrame(cm_total, index=le.classes_, columns=le.classes_)
+confusion_df.to_csv("confusion_matrix_AEAS_FC_total.csv")
+print("总体混淆矩阵已保存为 confusion_matrix_AEAS_FC_total.csv")
+
+# 使用结果管理器保存混淆矩阵
+rm.save_csv(confusion_df, "confusion_matrix_AEAS_FC_total.csv")
+
 plt.figure(figsize=(12,10))
 sns.heatmap(cm_total, annot=True, fmt='d', cmap="Blues", xticklabels=le.classes_, yticklabels=le.classes_)
-plt.title("Total Confusion Matrix (Validation + Test)")
+plt.title("Total Confusion Matrix (AE+AS Features)")
 plt.ylabel("True Label")
 plt.xlabel("Predicted Label")
 plt.xticks(rotation=45)
 plt.yticks(rotation=0)
 plt.tight_layout()
 plt.savefig("confusion_matrix_AEAS_FC_total.png")
+
+# 使用结果管理器保存图像
+rm.save_figure(plt.gcf(), "confusion_matrix_AEAS_FC_total.png")
 plt.close()
 print("总体混淆矩阵图像已保存为 confusion_matrix_AEAS_FC_total.png")
 
@@ -266,3 +284,41 @@ torch.save({
     'label_encoder': le
 }, 'trained_model_AEAS_FC.pth')
 print("模型和相关对象已保存为 trained_model_AEAS_FC.pth")
+
+# 使用结果管理器保存模型
+rm.copy_file('trained_model_AEAS_FC.pth', 'trained_model_AEAS_FC.pth')
+
+# 性能总结
+performance_summary = f"""
+{"="*60}
+AE+AS特征融合 + FC神经网络 性能总结
+{"="*60}
+训练样本数: {len(X_train)}
+测试样本数: {len(y_test)}
+融合特征维度: {X_train.shape[1]}
+类别数量: {len(le.classes_)}
+最终测试准确率: {total_accuracy:.4f}
+使用设备: {device}
+{"="*60}
+"""
+print(performance_summary)
+
+# 使用结果管理器保存性能摘要
+rm.save_text(performance_summary, "performance_summary.txt")
+
+# 创建实验摘要
+rm.create_experiment_summary(
+    model_name="AEAS_FC_Neural_Network",
+    accuracy=total_accuracy,
+    other_metrics={
+        "training_samples": len(X_train),
+        "test_samples": len(y_test),
+        "fused_feature_dimensions": X_train.shape[1],
+        "num_classes": len(le.classes_),
+        "device": device,
+        "feature_fusion": "AE+AS"
+    }
+)
+
+# 结束实验
+rm.finish("AE+AS特征融合全连接网络分类实验完成")

@@ -1,0 +1,13 @@
+{
+  "experiment_info": {
+    "model_name": "Test_Model",
+    "timestamp": "2025-06-20_13-12-49",
+    "output_directory": "experiment_results/Qwen_TAU2019/2025-06-20_13-12-49"
+  },
+  "performance_metrics": {
+    "accuracy": 0.95,
+    "precision": 0.92,
+    "recall": 0.89
+  },
+  "run_time": "2025-06-20 13:12:49"
+}

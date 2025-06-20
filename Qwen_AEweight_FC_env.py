@@ -13,11 +13,16 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from tqdm import tqdm
 import warnings
+from result_manager import ResultManager
 warnings.filterwarnings('ignore')
 
 # 读取 CSV
 csv_path = "./TAU-urban-acoustic-scenes-2019-development/meta.csv"
 df = pd.read_csv(csv_path, index_col=3, delimiter='\t')
+
+# 初始化结果管理器
+rm = ResultManager(project_name="Qwen_AE_FC_Classification")
+rm._log("开始 AE 全连接网络分类实验")
 
 # 自动选择设备
 if torch.cuda.is_available():
@@ -27,6 +32,7 @@ elif torch.backends.mps.is_available():
 else:
     device = "cpu"
 print(f"使用设备: {device}")
+rm._log(f"使用设备: {device}")
 
 # 设定参数
 TRAINING_SAMPLE_SIZE = 2000  # 用于训练模型的样本数量
@@ -388,24 +394,52 @@ torch.save({
 
 print("最终模型已保存到 trained_model_AE_FC.pth")
 
+# 使用结果管理器保存模型
+rm.copy_file('best_model_AE_FC.pth', 'best_model_AE_FC.pth')
+rm.copy_file('trained_model_AE_FC.pth', 'trained_model_AE_FC.pth')
+
 # 性能总结
-print("\n" + "="*60)
-print("AE特征 + FC神经网络 性能总结")
-print("="*60)
-print(f"训练样本数: {len(X_train_full)}")
-print(f"测试样本数: {len(y_test)}")
-print(f"特征维度: {X_train_scaled.shape[1]}")
-print(f"类别数量: {len(le.classes_)}")
-print(f"最佳验证准确率: {best_val_acc:.4f}")
-print(f"最终测试准确率: {accuracy:.4f}")
-print(f"训练轮数: {EPOCHS}")
-print(f"使用设备: {device}")
-print("="*60)
+performance_summary = f"""
+{"="*60}
+AE特征 + FC神经网络 性能总结
+{"="*60}
+训练样本数: {len(X_train_full)}
+测试样本数: {len(y_test)}
+特征维度: {X_train_scaled.shape[1]}
+类别数量: {len(le.classes_)}
+最佳验证准确率: {best_val_acc:.4f}
+最终测试准确率: {accuracy:.4f}
+训练轮数: {EPOCHS}
+使用设备: {device}
+{"="*60}
+"""
+print(performance_summary)
+
+# 使用结果管理器保存性能摘要
+rm.save_text(performance_summary, "performance_summary.txt")
+
+# 创建实验摘要
+rm.create_experiment_summary(
+    model_name="AE_FC_Neural_Network",
+    accuracy=accuracy,
+    other_metrics={
+        "training_samples": len(X_train_full),
+        "test_samples": len(y_test),
+        "feature_dimensions": X_train_scaled.shape[1],
+        "num_classes": len(le.classes_),
+        "best_validation_accuracy": best_val_acc,
+        "epochs": EPOCHS,
+        "device": device
+    }
+)
 
 print("\n所有处理完成！")
 print("生成的文件:")
 print("- best_model_AE_FC.pth: 最佳验证模型")
 print("- trained_model_AE_FC.pth: 最终训练模型")
+
+# 结束实验
+rm.finish("AE全连接网络分类实验完成")
 print("- training_curves_AE_FC.png: 训练曲线图")
 print("- prediction_results_AE_FC.csv: 预测结果")
 print("- classification_AE_FC_report.csv: 分类报告")

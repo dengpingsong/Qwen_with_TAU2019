@@ -9,10 +9,15 @@ from sklearn.metrics import accuracy_score, classification_report
 from tqdm import tqdm  # 引入进度条库
 import pickle
 import random
+from result_manager import ResultManager
 
 # 读取 CSV
 csv_path = "./TAU-urban-acoustic-scenes-2019-development/meta.csv"
 df = pd.read_csv(csv_path, index_col=3, delimiter='\t')
+
+# 初始化结果管理器
+rm = ResultManager(project_name="Qwen_AS_Classification")
+rm._log("开始 AS 权重分类实验")
 
 # 设定参数
 TRAINING_SAMPLE_SIZE = 2000  # 用于训练模型的样本数量
@@ -178,6 +183,10 @@ report_csv_path = "classification_PCA_AS_report.csv"
 report_df.to_csv(report_csv_path, index=True)
 
 print(f"分类报告已保存为 CSV 文件：{report_csv_path}")
+
+# 使用结果管理器保存分类报告
+rm.save_csv(report_df, "classification_PCA_AS_report.csv")
+
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -191,10 +200,13 @@ confusion_csv_path = "confusion_matrix_AS.csv"
 confusion_df.to_csv(confusion_csv_path)
 print(f"混淆矩阵已保存为 CSV 文件：{confusion_csv_path}")
 
+# 使用结果管理器保存混淆矩阵
+rm.save_csv(confusion_df, "confusion_matrix_AS.csv")
+
 # 可视化混淆矩阵
 plt.figure(figsize=(12, 10))
 sns.heatmap(confusion_df, annot=True, fmt='d', cmap="Blues")
-plt.title("Confusion Matrix")
+plt.title("Confusion Matrix - AS Classification")
 plt.ylabel("True Label")
 plt.xlabel("Predicted Label")
 plt.xticks(rotation=45)
@@ -205,4 +217,23 @@ plt.tight_layout()
 confusion_img_path = "confusion_matrix_AS.png"
 plt.savefig(confusion_img_path)
 print(f"混淆矩阵图像已保存为：{confusion_img_path}")
+
+# 使用结果管理器保存图像
+rm.save_figure(plt.gcf(), "confusion_matrix_AS.png")
 plt.close()
+
+# 创建实验摘要
+rm.create_experiment_summary(
+    model_name="PCA_AS_SVM",
+    accuracy=accuracy,
+    other_metrics={
+        "training_samples": len(X_train_full),
+        "validation_samples": len(X_val),
+        "pca_components": X_train_pca.shape[1],
+        "batch_size": BATCH_SIZE,
+        "validation_accuracy": val_accuracy
+    }
+)
+
+# 结束实验
+rm.finish("AS权重分类实验完成")

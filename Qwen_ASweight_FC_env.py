@@ -13,11 +13,16 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from tqdm import tqdm
 import warnings
+from result_manager import ResultManager
 warnings.filterwarnings('ignore')
 
 # 读取 CSV
 csv_path = "./TAU-urban-acoustic-scenes-2019-development/meta.csv"
 df = pd.read_csv(csv_path, index_col=3, delimiter='\t')
+
+# 初始化结果管理器
+rm = ResultManager(project_name="Qwen_AS_FC_Classification")
+rm._log("开始 AS 全连接网络分类实验")
 
 # 自动选择设备
 if torch.cuda.is_available():
@@ -389,18 +394,45 @@ torch.save({
 print("最终模型已保存到 trained_model_AS_FC.pth")
 
 # 性能总结
-print("\n" + "="*60)
-print("AS特征 + FC神经网络 性能总结")
-print("="*60)
-print(f"训练样本数: {len(X_train_full)}")
-print(f"测试样本数: {len(y_test)}")
-print(f"特征维度: {X_train_scaled.shape[1]}")
-print(f"类别数量: {len(le.classes_)}")
-print(f"最佳验证准确率: {best_val_acc:.4f}")
-print(f"最终测试准确率: {accuracy:.4f}")
-print(f"训练轮数: {EPOCHS}")
-print(f"使用设备: {device}")
-print("="*60)
+performance_summary = f"""
+{"="*60}
+AS特征 + FC神经网络 性能总结
+{"="*60}
+训练样本数: {len(X_train_full)}
+测试样本数: {len(y_test)}
+特征维度: {X_train_scaled.shape[1]}
+类别数量: {len(le.classes_)}
+最佳验证准确率: {best_val_acc:.4f}
+最终测试准确率: {accuracy:.4f}
+训练轮数: {EPOCHS}
+使用设备: {device}
+{"="*60}
+"""
+print(performance_summary)
+
+# 使用结果管理器保存性能摘要
+rm.save_text(performance_summary, "performance_summary.txt")
+
+# 使用结果管理器保存模型和文件
+rm.copy_file('best_model_AS_FC.pth', 'best_model_AS_FC.pth')
+rm.copy_file('trained_model_AS_FC.pth', 'trained_model_AS_FC.pth')
+rm.copy_file('training_curves_AS_FC.png', 'training_curves_AS_FC.png')
+rm.copy_file('prediction_results_AS_FC.csv', 'prediction_results_AS_FC.csv')
+
+# 创建实验摘要
+rm.create_experiment_summary(
+    model_name="AS_FC_Neural_Network",
+    accuracy=accuracy,
+    other_metrics={
+        "training_samples": len(X_train_full),
+        "test_samples": len(y_test),
+        "feature_dimensions": X_train_scaled.shape[1],
+        "num_classes": len(le.classes_),
+        "best_validation_accuracy": best_val_acc,
+        "epochs": EPOCHS,
+        "device": device
+    }
+)
 
 print("\n所有处理完成！")
 print("生成的文件:")
@@ -408,6 +440,9 @@ print("- best_model_AS_FC.pth: 最佳验证模型")
 print("- trained_model_AS_FC.pth: 最终训练模型")
 print("- training_curves_AS_FC.png: 训练曲线图")
 print("- prediction_results_AS_FC.csv: 预测结果")
+
+# 结束实验
+rm.finish("AS全连接网络分类实验完成")
 print("- classification_AS_FC_report.csv: 分类报告")
 print("- confusion_matrix_AS_FC.csv: 混淆矩阵数据")
 print("- confusion_matrix_AS_FC.png: 混淆矩阵图像")

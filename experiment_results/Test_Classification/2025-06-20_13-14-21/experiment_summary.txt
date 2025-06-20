@@ -1,0 +1,13 @@
+
+实验摘要
+========================================
+模型名称: Test_CNN_Model
+运行时间: 2025-06-20 13:14:21
+输出目录: experiment_results/Test_Classification/2025-06-20_13-14-21
+
+性能指标:
+- 准确率: 0.95
+- final_loss: 0.12
+- training_epochs: 5
+- best_epoch: 5
+- convergence_speed: fast

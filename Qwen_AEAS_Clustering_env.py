@@ -16,11 +16,16 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from tqdm import tqdm
 import warnings
+from result_manager import ResultManager
 warnings.filterwarnings('ignore')
 
 # 读取 CSV
 csv_path = "./TAU-urban-acoustic-scenes-2019-development/meta.csv"
 df = pd.read_csv(csv_path, index_col=3, delimiter='\t')
+
+# 初始化结果管理器
+rm = ResultManager(project_name="Qwen_AEAS_Clustering_Classification")
+rm._log("开始 AE+AS 特征融合聚类分类实验")
 
 # 自动选择设备
 if torch.cuda.is_available():
@@ -30,6 +35,7 @@ elif torch.backends.mps.is_available():
 else:
     device = "cpu"
 print(f"使用设备: {device}")
+rm._log(f"使用设备: {device}")
 
 # 参数设置
 TRAINING_SAMPLE_SIZE = 2000
@@ -413,8 +419,12 @@ for cluster_id in range(N_CLUSTERS):
             print(f"聚类 {cluster_id}: 样本数 {np.sum(cluster_mask)}, 准确率 {cluster_acc:.4f}")
 
 # 保存聚类性能
-pd.DataFrame(list(cluster_accuracy.items()), 
-             columns=['cluster_id', 'accuracy']).to_csv("cluster_performance.csv", index=False)
+cluster_perf_df = pd.DataFrame(list(cluster_accuracy.items()), 
+             columns=['cluster_id', 'accuracy'])
+cluster_perf_df.to_csv("cluster_performance.csv", index=False)
+
+# 使用结果管理器保存聚类性能
+rm.save_csv(cluster_perf_df, "cluster_performance.csv")
 
 # # 保存模型和相关对象
 # torch.save({
@@ -428,7 +438,47 @@ pd.DataFrame(list(cluster_accuracy.items()),
 # }, 'trained_model_clustering.pth')
 # print("聚类增强模型已保存为 trained_model_clustering.pth")
 
+# 性能总结
+performance_summary = f"""
+{"="*60}
+AE+AS特征融合 + 聚类增强分类 性能总结
+{"="*60}
+训练样本数: {len(X_train)}
+测试样本数: {len(y_test)}
+融合特征维度: {X_train.shape[1]}
+PCA降维维度: {PCA_COMPONENTS}
+聚类数量: {N_CLUSTERS}
+类别数量: {len(le.classes_)}
+最终测试准确率: {total_accuracy:.4f}
+使用设备: {device}
+{"="*60}
+"""
+
+print(performance_summary)
+
+# 使用结果管理器保存性能摘要
+rm.save_text(performance_summary, "performance_summary.txt")
+
+# 创建实验摘要
+rm.create_experiment_summary(
+    model_name="AEAS_Clustering_Enhanced_Classification",
+    accuracy=total_accuracy,
+    other_metrics={
+        "training_samples": len(X_train),
+        "test_samples": len(y_test),
+        "fused_feature_dimensions": X_train.shape[1],
+        "pca_components": PCA_COMPONENTS,
+        "n_clusters": N_CLUSTERS,
+        "num_classes": len(le.classes_),
+        "device": device,
+        "method": "clustering_enhanced_classification"
+    }
+)
+
 print("\n聚类增强处理完成!")
 print(f"- 使用了 {N_CLUSTERS} 个聚类")
 print(f"- PCA降维到 {PCA_COMPONENTS} 维")
 print(f"- 最终模型准确率: {total_accuracy:.4f}")
+
+# 结束实验
+rm.finish("AE+AS特征融合聚类增强分类实验完成")

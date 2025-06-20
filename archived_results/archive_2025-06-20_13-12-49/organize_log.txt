@@ -1,0 +1,67 @@
+文件整理日志
+==========================================
+整理时间: 2025-06-20 13:12:49
+存档目录: /Users/apple/Documents/Qwen_with_TAU2019/archived_results/archive_2025-06-20_13-12-49
+移动文件数量: 60
+
+移动的文件:
+- audio_results.csv
+- confusion_matrix_clustering.csv
+- prediction_differences_detailed.csv
+- prediction_results_clustering.csv
+- ae_only_correct_samples.csv
+- classification_AE_FC_report.csv
+- classification_PCA_AS_report.csv
+- classification_PCA_AEAS_FC_report.csv
+- classification_clustering_report.csv
+- classification_PCA_AE_report.csv
+- prediction_results_AE.csv
+- classification_AS_FC_report.csv
+- prediction_results_AS.csv
+- detailed_AE_AS_comparison.csv
+- cluster_scene_distribution.csv
+- AS_class_accuracy.csv
+- both_models_wrong_samples.csv
+- confusion_matrix_AEAS_FC_total.csv
+- confusion_matrix_AS_FC.csv
+- prediction_results_AEAS_FC.csv
+- confusion_matrix_AE_FC.csv
+- classification_report.csv
+- confusion_matrix_difference_AE_AS.csv
+- prediction_results_AS_FC.csv
+- class_accuracy.csv
+- AE_class_accuracy.csv
+- cluster_performance.csv
+- prediction_results_AE_FC.csv
+- confusion_matrix_AEAS_FC.csv
+- classification_PCA_report.csv
+- confusion_matrix_AS.csv
+- classification_AEAS_FC_report.csv
+- AS_confusion_matrix.csv
+- confusion_matrix.csv
+- confusion_matrix_AE.csv
+- as_only_correct_samples.csv
+- class_level_differences_analysis.csv
+- prediction_differences_summary.txt
+- AE_AS_comparison_summary.txt
+- confusion_matrix.png
+- confusion_matrix_AE.png
+- confusion_matrix_AS.png
+- AS_confusion_matrix.png
+- confusion_matrix_difference_AE_AS.png
+- confusion_matrix_AEAS_FC.png
+- prediction_differences_analysis.png
+- confusion_matrix_AEAS_FC_total.png
+- confusion_matrix_AS_FC.png
+- AE_confusion_matrix.png
+- confusion_matrix_AE_FC.png
+- clustering_visualization.png
+- confusion_matrix_clustering.png
+- training_curves_AE_FC.png
+- training_curves_clustering.png
+- training_curves_AS_FC.png
+- PCA_AE_AS_comparison_analysis.png
+- best_model_AE_FC.pth
+- trained_model_AE_FC.pth
+- trained_model_AEAS_FC.pth
+- report
