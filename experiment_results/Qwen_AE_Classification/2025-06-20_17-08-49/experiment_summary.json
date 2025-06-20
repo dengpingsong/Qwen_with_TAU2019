@@ -1,0 +1,16 @@
+{
+  "experiment_info": {
+    "model_name": "PCA_AE_SVM",
+    "timestamp": "2025-06-20_17-08-49",
+    "output_directory": "experiment_results/Qwen_AE_Classification/2025-06-20_17-08-49"
+  },
+  "performance_metrics": {
+    "accuracy": 0.7023789856269619,
+    "training_samples": 2000,
+    "validation_samples": 400,
+    "pca_components": 1426,
+    "batch_size": 200,
+    "validation_accuracy": 0.7125
+  },
+  "run_time": "2025-06-20 17:13:08"
+}

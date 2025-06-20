@@ -1,0 +1,14 @@
+
+实验摘要
+========================================
+模型名称: PCA_AE_SVM
+运行时间: 2025-06-20 17:13:08
+输出目录: experiment_results/Qwen_AE_Classification/2025-06-20_17-08-49
+
+性能指标:
+- 准确率: 0.7023789856269619
+- training_samples: 2000
+- validation_samples: 400
+- pca_components: 1426
+- batch_size: 200
+- validation_accuracy: 0.7125

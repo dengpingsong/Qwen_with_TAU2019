@@ -398,39 +398,145 @@ def generate_summary_report(ae_report, as_report, comparison_results, ae_cm, as_
     # 打印总结
     print('\n'.join(summary))
 
+def load_prediction_results(ae_file_path, as_file_path):
+    """加载AE和AS的预测结果文件"""
+    try:
+        ae_df = pd.read_csv(ae_file_path)
+        as_df = pd.read_csv(as_file_path)
+        
+        print(f"AE预测结果: {len(ae_df)} 条记录")
+        print(f"AS预测结果: {len(as_df)} 条记录")
+        
+        return ae_df, as_df
+    except Exception as e:
+        print(f"加载预测结果文件时出错: {e}")
+        return None, None
+
+def find_inconsistent_samples(ae_df, as_df):
+    """找出AE和AS预测不一致的样本"""
+    # 基于文件名匹配样本（去掉文件扩展名中的aAE/aAS部分）
+    ae_df['base_name'] = ae_df['file_name'].str.replace('-aAE.npy', '').str.replace('-aAS.npy', '')
+    as_df['base_name'] = as_df['file_name'].str.replace('-aAE.npy', '').str.replace('-aAS.npy', '')
+    
+    # 合并数据
+    merged_df = pd.merge(ae_df, as_df, on='base_name', suffixes=('_ae', '_as'))
+    
+    # 找出预测不一致的样本
+    inconsistent_mask = merged_df['predicted_label_ae'] != merged_df['predicted_label_as']
+    inconsistent_samples = merged_df[inconsistent_mask].copy()
+    
+    print(f"\n总样本数: {len(merged_df)}")
+    print(f"预测一致的样本: {len(merged_df) - len(inconsistent_samples)}")
+    print(f"预测不一致的样本: {len(inconsistent_samples)}")
+    print(f"不一致率: {len(inconsistent_samples)/len(merged_df)*100:.2f}%")
+    
+    return inconsistent_samples, merged_df
+
+def analyze_inconsistent_patterns(inconsistent_samples):
+    """分析不一致样本的模式"""
+    print("\n" + "="*60)
+    print("不一致样本分析")
+    print("="*60)
+    
+    # 按真实标签分析不一致情况
+    print("\n1. 按真实场景分析不一致率:")
+    print("-" * 40)
+    
+    true_label_analysis = {}
+    for true_label in inconsistent_samples['true_label_ae'].unique():
+        scene_samples = inconsistent_samples[inconsistent_samples['true_label_ae'] == true_label]
+        true_label_analysis[true_label] = {
+            'count': len(scene_samples),
+            'ae_predictions': scene_samples['predicted_label_ae'].value_counts().to_dict(),
+            'as_predictions': scene_samples['predicted_label_as'].value_counts().to_dict()
+        }
+        print(f"{true_label}: {len(scene_samples)} 个不一致样本")
+    
+    # 分析最常见的不一致模式
+    print("\n2. 最常见的不一致模式:")
+    print("-" * 40)
+    
+    inconsistent_patterns = inconsistent_samples.groupby(['true_label_ae', 'predicted_label_ae', 'predicted_label_as']).size().sort_values(ascending=False)
+    
+    for (true_label, ae_pred, as_pred), count in inconsistent_patterns.head(10).items():
+        print(f"真实:{true_label} -> AE预测:{ae_pred}, AS预测:{as_pred} ({count}次)")
+    
+    return true_label_analysis, inconsistent_patterns
+
+def generate_inconsistent_samples_for_audioset(inconsistent_samples):
+    """为AudioSet分析生成不一致样本文件"""
+    import json
+    
+    # 选择最具代表性的不一致样本
+    analysis_samples = []
+    
+    # 按真实标签分组，每个场景选择几个代表性样本
+    for true_label in inconsistent_samples['true_label_ae'].unique():
+        scene_samples = inconsistent_samples[inconsistent_samples['true_label_ae'] == true_label]
+        
+        # 选择前5个样本
+        selected_samples = scene_samples.head(5)
+        
+        for _, sample in selected_samples.iterrows():
+            # 构造原始音频文件路径
+            base_name = sample['base_name']
+            audio_file = f"{base_name}.wav"
+            
+            analysis_samples.append({
+                "audio_file": audio_file,
+                "base_name": base_name,
+                "true_scene": sample['true_label_ae'],
+                "ae_prediction": sample['predicted_label_ae'],
+                "as_prediction": sample['predicted_label_as'],
+                "inconsistency_type": f"AE:{sample['predicted_label_ae']} vs AS:{sample['predicted_label_as']}"
+            })
+    
+    # 保存不一致样本分析
+    inconsistent_analysis = {
+        "analysis_time": pd.Timestamp.now().isoformat(),
+        "total_inconsistent_samples": len(inconsistent_samples),
+        "inconsistency_rate": len(inconsistent_samples) / len(inconsistent_samples) * 100,
+        "samples_for_audioset_analysis": analysis_samples[:50]  # 取前50个样本进行AudioSet分析
+    }
+    
+    with open('inconsistent_samples_analysis.json', 'w', encoding='utf-8') as f:
+        json.dump(inconsistent_analysis, f, ensure_ascii=False, indent=2)
+    
+    print(f"\n已生成 {len(analysis_samples[:50])} 个不一致样本供AudioSet分析")
+    print("文件保存为: inconsistent_samples_analysis.json")
+    
+    return inconsistent_analysis
+
 def main():
     """主函数"""
-    print("开始PCA AE vs AS模型比较分析...")
+    print("开始AE vs AS预测结果比较分析...")
     
-    # 文件路径
-    ae_report_path = "classification_PCA_AE_report.csv"
-    as_report_path = "classification_PCA_AS_report.csv"
-    ae_cm_path = "confusion_matrix_AE.csv"
-    as_cm_path = "confusion_matrix_AS.csv"
+    # 加载预测结果
+    ae_df, as_df = load_prediction_results("prediction_results_AE.csv", "prediction_results_AS.csv")
     
-    # 比较分类报告
-    ae_report, as_report, comparison_results = compare_classification_reports(
-        ae_report_path, as_report_path)
-    
-    if ae_report is None:
-        print("无法进行比较分析，请检查文件是否存在")
+    if ae_df is None or as_df is None:
+        print("无法加载预测结果文件")
         return
     
-    # 比较混淆矩阵
-    ae_cm, as_cm, diff_cm = compare_confusion_matrices(ae_cm_path, as_cm_path)
+    # 找出不一致样本
+    inconsistent_samples, merged_df = find_inconsistent_samples(ae_df, as_df)
     
-    if ae_cm is None:
-        print("无法加载混淆矩阵，跳过混淆矩阵比较")
+    if len(inconsistent_samples) == 0:
+        print("没有发现不一致的样本")
         return
     
-    # 可视化比较结果
-    visualize_comparison(ae_report, as_report, comparison_results, ae_cm, as_cm, diff_cm)
+    # 分析不一致模式
+    true_label_analysis, inconsistent_patterns = analyze_inconsistent_patterns(inconsistent_samples)
     
-    # 生成总结报告
-    generate_summary_report(ae_report, as_report, comparison_results, ae_cm, as_cm, diff_cm)
+    # 生成AudioSet分析用的不一致样本文件
+    inconsistent_analysis = generate_inconsistent_samples_for_audioset(inconsistent_samples)
+    
+    # 保存详细的不一致样本数据
+    inconsistent_samples.to_csv('detailed_inconsistent_samples.csv', index=False)
+    print("详细不一致样本数据已保存为: detailed_inconsistent_samples.csv")
     
     print("\n比较分析完成！")
-    print("请查看生成的文件和图表以了解详细比较结果。")
+    print("不一致样本分析文件已准备好供AudioSet模型使用。")
 
 if __name__ == "__main__":
     main()

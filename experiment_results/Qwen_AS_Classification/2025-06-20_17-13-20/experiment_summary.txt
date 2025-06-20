@@ -1,0 +1,14 @@
+
+实验摘要
+========================================
+模型名称: PCA_AS_SVM
+运行时间: 2025-06-20 17:17:48
+输出目录: experiment_results/Qwen_AS_Classification/2025-06-20_17-13-20
+
+性能指标:
+- 准确率: 0.68924500247811
+- training_samples: 2000
+- validation_samples: 400
+- pca_components: 1425
+- batch_size: 200
+- validation_accuracy: 0.6925

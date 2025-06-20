@@ -1,0 +1,11 @@
+[2025-06-20 17:08:49] 开始运行: 2025-06-20 17:08:49
+[2025-06-20 17:08:49] 输出目录: experiment_results/Qwen_AE_Classification/2025-06-20_17-08-49
+[2025-06-20 17:08:49] 开始 AE 权重分类实验
+[2025-06-20 17:13:07] 保存CSV文件: classification_PCA_AE_report.csv
+[2025-06-20 17:13:07] 保存CSV文件: confusion_matrix_AE.csv
+[2025-06-20 17:13:08] 保存图片文件: confusion_matrix_AE.png
+[2025-06-20 17:13:08] 保存JSON文件: experiment_summary.json
+[2025-06-20 17:13:08] 保存文本文件: experiment_summary.txt
+[2025-06-20 17:13:08] 运行结束: 2025-06-20 17:13:08
+[2025-06-20 17:13:08] 保存文本文件: run_summary.txt
+[2025-06-20 17:13:08] 所有结果已保存到: experiment_results/Qwen_AE_Classification/2025-06-20_17-08-49
