@@ -119,7 +119,7 @@ val_dataset = AudioFeatureDataset(X_val_scaled, y_val)
 # 训练参数 - 从配置文件导入
 BATCH_SIZE = TRAINING_CONFIG['batch_size']
 LEARNING_RATE = TRAINING_CONFIG['learning_rate']
-EPOCHS = TRAINING_CONFIG['epochs']
+EPOCHS = TRAINING_CONFIG['max_epochs']
 EARLY_STOPPING_PATIENCE = TRAINING_CONFIG['early_stopping_patience']
 
 # 更新数据加载器

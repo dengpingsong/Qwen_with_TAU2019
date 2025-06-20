@@ -20,7 +20,7 @@ TRAINING_CONFIG = {
     'lr_threshold': 1e-5,  # 当学习率降到这个值时停止训练
     # 基于验证准确率的早停（辅助早停机制）
     'val_acc_early_stop': True,
-    'val_acc_patience': 20,  # 验证准确率不提升的容忍轮数
+    'val_acc_patience': 50,  # 验证准确率不提升的容忍轮数
     # 显示进度频率
     'progress_interval': 5,  # 每5轮显示一次进度
 }

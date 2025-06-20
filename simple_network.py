@@ -11,40 +11,14 @@ from torch.utils.data import Dataset
 
 class AudioClassificationNet(nn.Module):
     """
-    统一的音频分类全连接网络
+    单层全连接音频分类网络
     适用于AE、AS和融合特征的分类任务
     """
     
     def __init__(self, input_dim, num_classes):
         super(AudioClassificationNet, self).__init__()
-        self.network = nn.Sequential(
-            # 第一层
-            nn.Linear(input_dim, 1024),
-            nn.BatchNorm1d(1024),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            
-            # 第二层
-            nn.Linear(1024, 512),
-            nn.BatchNorm1d(512),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            
-            # 第三层
-            nn.Linear(512, 256),
-            nn.BatchNorm1d(256),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            
-            # 第四层
-            nn.Linear(256, 128),
-            nn.BatchNorm1d(128),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            
-            # 输出层
-            nn.Linear(128, num_classes)
-        )
+        # 单层全连接网络：直接从输入到输出
+        self.network = nn.Linear(input_dim, num_classes)
     
     def forward(self, x):
         return self.network(x)
