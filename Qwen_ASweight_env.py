@@ -104,6 +104,16 @@ with open('trained_model_AS.pkl', 'wb') as f:
     pickle.dump(model_data, f)
 
 print("模型已保存到 trained_model_AS.pkl")
+# 保留验证集标签和预测
+y_val_saved = y_val.copy()
+y_val_pred_saved = y_val_pred.copy()
+
+# 释放训练数据内存
+del X_train_full, y_train_full, X_train, y_train
+del X_train_scaled, X_train_pca
+del X_val, y_val, X_val_scaled, X_val_pca, y_val_pred
+import gc
+gc.collect()
 
 # 第二步：分批预测剩余数据
 print("开始分批预测剩余数据...")
@@ -153,9 +163,9 @@ for i in tqdm(range(0, len(remaining_files), BATCH_SIZE), desc="分批预测"):
     all_true_labels.extend(y_batch)
     all_file_names.extend(file_names)
 
-# 合并验证集和预测结果
-y_test = np.concatenate([y_val, np.array(all_true_labels)])
-y_pred = np.concatenate([y_val_pred, np.array(all_predictions)])
+# 合并验证与预测结果
+y_test = np.concatenate([y_val_saved, np.array(all_labels)])
+y_pred = np.concatenate([y_val_pred_saved, np.array(all_preds)])
 
 print(f"总预测样本数: {len(y_test)}")
 
