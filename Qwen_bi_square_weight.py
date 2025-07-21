@@ -104,7 +104,7 @@ for batch_idx in range(num_batches):
                     **inputs,
                     output_hidden_states=True,
                     return_dict_in_generate=True,
-                    max_new_tokens=64
+                    max_new_tokens=-1
                 )
 
             # 解码文本

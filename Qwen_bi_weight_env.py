@@ -114,7 +114,7 @@ y_test = np.concatenate([y_val_saved, np.array(all_labels)])
 y_pred = np.concatenate([y_val_pred_saved, np.array(all_preds)])
 
 # 输出准确率和报告
-print(f"总准确率: {accuracy_score(y_test, y_pred):.4f}")
+print(f"总准确率: {accuracy_score(y_test, y_pred):.4f}\n {classification_report(y_test, y_pred)}")
 report_df = pd.DataFrame(classification_report(y_test, y_pred, output_dict=True)).transpose()
 report_df.to_csv("classification_PCA__bi-scene_report.csv")
 
@@ -125,7 +125,7 @@ conf_df.to_csv("confusion_matrix__bi-scene.csv")
 
 plt.figure(figsize=(12, 10))
 sns.heatmap(conf_df, annot=True, fmt='d', cmap="Blues")
-plt.title("Confusion Matrix - AE Classification")
+plt.title("Confusion Matrix - biSqu Classification")
 plt.xlabel("Predicted Label")
 plt.ylabel("True Label")
 plt.tight_layout()
